@@ -7,7 +7,7 @@ namespace TelegramCloud.Infrastructure;
 
 public class DatabaseContext
 {
-    private const string ConnectionString = "Data Source=consoleappdemo.sqlite3";
+    private const string ConnectionString = "Data Source=telegramcloud.sqlite3";
 
     public DatabaseContext()
     {
@@ -18,7 +18,7 @@ public class DatabaseContext
         InitializeDatabase(connection);
     }
 
-    public async Task<Guid> InsertFile(string fileName, long fileSize)
+    public async Task<Guid> InsertFile(string fileName, long fileSize, string encryptionKey, string encryptionIv)
     {
         var fileGuid = Guid.NewGuid();
 
@@ -27,7 +27,7 @@ public class DatabaseContext
         connection.Open();
 
         var sqlCommand = new SqliteCommand
-        ($"INSERT INTO Files (Id, Name, Size) VALUES ('{fileGuid}', '{fileName}', {fileSize})",
+        ($"INSERT INTO Files (Id, Name, Size, EncryptionKey, EncryptionIv) VALUES ('{fileGuid}', '{fileName}', {fileSize}, '{encryptionKey}', '{encryptionIv}')",
             connection);
 
         await sqlCommand.ExecuteNonQueryAsync();
@@ -42,12 +42,12 @@ public class DatabaseContext
         connection.Open();
 
         var sqlCommand = new SqliteCommand
-        ($"DELETE FROM Files WHERE Id = '{fileId}'", connection);
+            ($"DELETE FROM Files WHERE Id = '{fileId}'", connection);
 
         await sqlCommand.ExecuteNonQueryAsync();
-        
+
         sqlCommand = new SqliteCommand
-        ($"DELETE FROM FileChunks WHERE FileId = '{fileId}'", connection);
+            ($"DELETE FROM FileChunks WHERE FileId = '{fileId}'", connection);
 
         await sqlCommand.ExecuteNonQueryAsync();
     }
@@ -67,7 +67,7 @@ public class DatabaseContext
         await sqlCommand.ExecuteNonQueryAsync();
     }
 
-    public IEnumerable<FileDto> GetAllFiles()
+    public IEnumerable<FileDto> GetFiles()
     {
         using var connection = new SqliteConnection(ConnectionString);
         connection.Open();
@@ -83,14 +83,17 @@ public class DatabaseContext
             yield return new FileDto(
                 sqlDataReader.GetGuid("Id"),
                 sqlDataReader.GetString("Name"),
-                sqlDataReader.GetInt64("Size"));
+                sqlDataReader.GetInt64("Size"),
+                sqlDataReader.GetString("EncryptionKey"),
+                sqlDataReader.GetString("EncryptionIv")
+            );
         }
     }
 
-    public IEnumerable<FileChunkDto> GetAllFileChunks(Guid fileId)
+    public IEnumerable<FileChunkDto> GetFileChunks(Guid fileId)
     {
         using var connection = new SqliteConnection(ConnectionString);
-        
+
         connection.Open();
 
         var sqlCommand = new SqliteCommand
@@ -107,10 +110,10 @@ public class DatabaseContext
         }
     }
 
-    public FileDto? GetFileSize(Guid fileId)
+    public FileDto? GetFile(Guid fileId)
     {
         using var connection = new SqliteConnection(ConnectionString);
-        
+
         connection.Open();
 
         var sqlCommand = new SqliteCommand
@@ -118,12 +121,14 @@ public class DatabaseContext
             connection);
 
         var sqlDataReader = sqlCommand.ExecuteReader();
-        
+
         return sqlDataReader.Read()
             ? new FileDto(
                 fileId,
                 sqlDataReader.GetString("Name"),
-                sqlDataReader.GetInt64("Size"))
+                sqlDataReader.GetInt64("Size"),
+                sqlDataReader.GetString("EncryptionKey"),
+                sqlDataReader.GetString("EncryptionIv"))
             : null;
     }
 
@@ -146,17 +151,17 @@ public class DatabaseContext
     public TelegramBotConfigDto GetRequiredTelegramBotConfig()
     {
         var telegramBotConfig = GetTelegramBotConfig();
-        
+
         if (telegramBotConfig is null)
         {
             throw new ConfigurationException("Telegram bot configuration is not set.");
         }
-        
+
         if (telegramBotConfig.Token is null)
         {
             throw new ConfigurationException("Telegram bot token configuration is not set.");
         }
-        
+
         if (telegramBotConfig.ChatId is null)
         {
             throw new ConfigurationException("Telegram bot chat ID configuration is not set.");
@@ -220,7 +225,7 @@ public class DatabaseContext
     private static void CreateFilesTable(SqliteConnection connection)
     {
         var sqlCommand = new SqliteCommand
-        ("CREATE TABLE IF NOT EXISTS Files(Id VARCHAR(36), Name VARCHAR(256), Size INTEGER)",
+        ("CREATE TABLE IF NOT EXISTS Files(Id VARCHAR(36), Name NVARCHAR(256), Size INTEGER, EncryptionKey VARCHAR(50), EncryptionIv VARCHAR(30))",
             connection);
 
         sqlCommand.ExecuteNonQuery();

@@ -11,7 +11,7 @@ public class ListFilesCommand : Command
     {
         this.SetHandler(_ =>
         {
-            var files = _dbContext.GetAllFiles().ToList();
+            var files = _dbContext.GetFiles().ToList();
 
             if (files.Count == 0)
             {

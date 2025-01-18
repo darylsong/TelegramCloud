@@ -8,7 +8,7 @@ public class TelegramBot(string token, int chatId)
     private readonly TelegramBotClient _client = new(token);
     private readonly ChatId _chatId = new(chatId);
 
-    public async Task GetFile(string telegramFileId, FileStream fileStream)
+    public async Task GetFile(string telegramFileId, MemoryStream memoryStream)
     {
         var fileInfo = await _client.GetFile(telegramFileId);
 
@@ -17,7 +17,7 @@ public class TelegramBot(string token, int chatId)
             throw new FileNotFoundException($"Telegram file with {telegramFileId} not found.");
         }
 
-        await _client.DownloadFile(fileInfo.FilePath, fileStream);
+        await _client.DownloadFile(fileInfo.FilePath, memoryStream);
     }
 
     public async Task<string> SendFile(Stream fileStream)

@@ -1,6 +1,7 @@
 using System.CommandLine;
 using TelegramCloud.Commands.File.Shared;
 using TelegramCloud.Infrastructure;
+using TelegramCloud.Services;
 
 namespace TelegramCloud.Commands.File.Download;
 
@@ -20,20 +21,20 @@ public class DownloadFileCommand : Command
         {
             var config = _dbContext.GetRequiredTelegramBotConfig();
             var telegramBot = new TelegramBot(config.Token!, config.ChatId!.Value);
+            var encryptionService = new FileEncryptionService();
             
-            var file = _dbContext.GetFileSize(fileIdArgumentValue);
+            var file = _dbContext.GetFile(fileIdArgumentValue);
 
             if (file is null)
             {
                 Console.WriteLine($"File with ID {fileIdArgumentValue} not found.");
-
                 return;
             }
 
             Console.WriteLine($"Downloading file {file.Name} with size {file.Size} bytes.");
 
             var fileChunks = _dbContext
-                .GetAllFileChunks(fileIdArgumentValue)
+                .GetFileChunks(fileIdArgumentValue)
                 .OrderBy(x => x.ChunkNumber);
 
             var outputPath = outputFileNameOptionValue is null
@@ -42,14 +43,23 @@ public class DownloadFileCommand : Command
 
             try
             {
-                await using var fileStream = new FileStream(outputPath, FileMode.Create);
-
+                // Download all chunks into a single encrypted data array
+                var encryptedData = new MemoryStream();
                 foreach (var fileChunk in fileChunks)
                 {
-                    await telegramBot.GetFile(fileChunk.TelegramFileId, fileStream);
-
-                    Console.WriteLine($"Download progress: {(double) fileStream.Length / file.Size * 100}%");
+                    using var chunkStream = new MemoryStream();
+                    await telegramBot.GetFile(fileChunk.TelegramFileId, chunkStream);
+                    var chunkData = chunkStream.ToArray();
+                    await encryptedData.WriteAsync(chunkData);
+                    
+                    Console.WriteLine($"Download progress: {(double)encryptedData.Length / file.Size * 100}%");
                 }
+
+                var key = Convert.FromBase64String(file.EncryptionKey);
+                var iv = Convert.FromBase64String(file.EncryptionIv);
+                var decryptedData = encryptionService.Decrypt(encryptedData.ToArray(), key, iv);
+
+                await System.IO.File.WriteAllBytesAsync(outputPath, decryptedData);
 
                 Console.WriteLine("Successfully downloaded file.");
             }
@@ -59,8 +69,8 @@ public class DownloadFileCommand : Command
                 {
                     System.IO.File.Delete(outputPath);
                 }
+                throw;
             }
-
         }, fileIdArgument, outputFileNameOption);
     }
 }

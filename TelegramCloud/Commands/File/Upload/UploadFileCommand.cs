@@ -1,6 +1,7 @@
 using System.CommandLine;
 using TelegramCloud.Infrastructure;
 using TelegramCloud.Models;
+using TelegramCloud.Services;
 
 namespace TelegramCloud.Commands.File.Upload;
 
@@ -18,10 +19,13 @@ public class UploadFileCommand : Command
         {
             var config = _dbContext.GetRequiredTelegramBotConfig();
             var telegramBot = new TelegramBot(config.Token!, config.ChatId!.Value);
+            var encryptionService = new FileEncryptionService();
         
-            await using var reader = new FileStream(filePathArgumentValue, FileMode.Open);
-
-            var totalFileSize = reader.Length;
+            // Read entire file into memory and encrypt it
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(filePathArgumentValue);
+            var (encryptedData, encryptionKey, encryptionIv) = encryptionService.Encrypt(fileBytes);
+        
+            var totalFileSize = fileBytes.Length;
             var totalUploadedSize = 0L;
             var uploadedFileChunks = new List<UploadedFileChunkDto>();
         
@@ -29,31 +33,33 @@ public class UploadFileCommand : Command
 
             try
             {
-                var buffer = new byte[ChunkSize];
-                int bytesRead;
-                var chunkNumber = 0;
-
-                while ((bytesRead = await reader.ReadAsync(buffer.AsMemory(0, ChunkSize))) > 0)
+                for (int offset = 0; offset < encryptedData.Length; offset += ChunkSize)
                 {
-                    chunkNumber++;
-                    using var chunkStream = new MemoryStream(buffer, 0, bytesRead);
+                    var chunkSize = Math.Min(ChunkSize, encryptedData.Length - offset);
+                    var chunk = new byte[chunkSize];
+                    Array.Copy(encryptedData, offset, chunk, 0, chunkSize);
+                    
+                    var chunkNumber = (offset / ChunkSize) + 1;
+                    using var chunkStream = new MemoryStream(chunk);
                     var chunkLength = chunkStream.Length;
                     var telegramFileId = await telegramBot.SendFile(chunkStream);
                     uploadedFileChunks.Add(new UploadedFileChunkDto(telegramFileId, chunkNumber, chunkLength));
                     totalUploadedSize += chunkLength;
 
-                    Console.WriteLine($"Upload progress: {(double)totalUploadedSize / totalFileSize * 100}%");
+                    Console.WriteLine($"Upload progress: {(double)totalUploadedSize / encryptedData.Length * 100}%");
                 }
-             
             }
             catch (Exception e)
             {
                 Console.WriteLine($"Error: {e}");
-
                 throw;
             }
         
-            var fileGuid = await _dbContext.InsertFile(Path.GetFileName(filePathArgumentValue), totalFileSize);
+            var fileGuid = await _dbContext.InsertFile(
+                Path.GetFileName(filePathArgumentValue), 
+                totalFileSize,
+                Convert.ToBase64String(encryptionKey),
+                Convert.ToBase64String(encryptionIv));
 
             foreach (var fileChunk in uploadedFileChunks)
             {

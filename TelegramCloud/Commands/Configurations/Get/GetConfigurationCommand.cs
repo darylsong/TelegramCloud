@@ -21,8 +21,6 @@ public class GetConfigurationCommand : Command
                 Console.WriteLine("API token: " + (config.Token ?? "Not set"));
                 Console.WriteLine("Chat ID: " + (config.ChatId?.ToString() ?? "Not set"));
             }
-
-            return Task.CompletedTask;
         });
     }
 }

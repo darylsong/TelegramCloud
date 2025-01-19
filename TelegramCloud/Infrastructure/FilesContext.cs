@@ -1,14 +1,15 @@
 ﻿using System.Data;
 using Microsoft.Data.Sqlite;
 using TelegramCloud.Models;
+using File = TelegramCloud.Models.File;
 
 namespace TelegramCloud.Infrastructure;
 
 public interface IFilesContext
 {
-    Task<FileDto?> GetFile(Guid fileId);
-    IAsyncEnumerable<FileDto> GetFiles();
-    IAsyncEnumerable<FileChunkDto> GetFileChunks(Guid fileId);
+    Task<File?> GetFile(Guid fileId);
+    IAsyncEnumerable<File> GetFiles();
+    IAsyncEnumerable<FileChunk> GetFileChunks(Guid fileId);
     Task<Guid> InsertFile(string fileName, long fileSize, string encryptionKey, string encryptionIv);
     Task InsertFileChunk(Guid fileId, int chunkNumber, string telegramFileId, long size);
     Task DeleteFile(Guid fileId);
@@ -16,7 +17,7 @@ public interface IFilesContext
 
 public class FilesContext : DatabaseContext, IFilesContext
 {
-    public async Task<FileDto?> GetFile(Guid fileId)
+    public async Task<File?> GetFile(Guid fileId)
     {
         await using var connection = GetDatabaseConnection();
 
@@ -27,7 +28,7 @@ public class FilesContext : DatabaseContext, IFilesContext
         var sqlDataReader = sqlCommand.ExecuteReader();
 
         return sqlDataReader.Read()
-            ? new FileDto(
+            ? new File(
                 fileId,
                 sqlDataReader.GetString("Name"),
                 sqlDataReader.GetInt64("Size"),
@@ -36,7 +37,7 @@ public class FilesContext : DatabaseContext, IFilesContext
             : null;
     }
 
-    public async IAsyncEnumerable<FileDto> GetFiles()
+    public async IAsyncEnumerable<File> GetFiles()
     {
         await using var connection = GetDatabaseConnection();
         
@@ -48,7 +49,7 @@ public class FilesContext : DatabaseContext, IFilesContext
 
         while (sqlDataReader.Read())
         {
-            yield return new FileDto(
+            yield return new File(
                 sqlDataReader.GetGuid("Id"),
                 sqlDataReader.GetString("Name"),
                 sqlDataReader.GetInt64("Size"),
@@ -58,7 +59,7 @@ public class FilesContext : DatabaseContext, IFilesContext
         }
     }
 
-    public async IAsyncEnumerable<FileChunkDto> GetFileChunks(Guid fileId)
+    public async IAsyncEnumerable<FileChunk> GetFileChunks(Guid fileId)
     {
         await using var connection = GetDatabaseConnection();
 
@@ -70,7 +71,7 @@ public class FilesContext : DatabaseContext, IFilesContext
 
         while (sqlDataReader.Read())
         {
-            yield return new FileChunkDto(
+            yield return new FileChunk(
                 sqlDataReader.GetString("TelegramFileId"),
                 sqlDataReader.GetInt32("ChunkNumber"));
         }

@@ -29,7 +29,7 @@ public class UploadFileCommand : Command
 
                 var totalFileSize = fileBytes.Length;
                 var totalUploadedSize = 0L;
-                var uploadedFileChunks = new List<UploadedFileChunkDto>();
+                var uploadedFileChunks = new List<UploadedFileChunk>();
 
                 Console.WriteLine($"Uploading file {filePath} with size {totalFileSize} bytes.");
 
@@ -45,7 +45,7 @@ public class UploadFileCommand : Command
                         using var chunkStream = new MemoryStream(chunk);
                         var chunkLength = chunkStream.Length;
                         var telegramFileId = await telegramBot.SendFile(chunkStream);
-                        uploadedFileChunks.Add(new UploadedFileChunkDto(telegramFileId, chunkNumber, chunkLength));
+                        uploadedFileChunks.Add(new UploadedFileChunk(telegramFileId, chunkNumber, chunkLength));
                         totalUploadedSize += chunkLength;
 
                         Console.WriteLine(

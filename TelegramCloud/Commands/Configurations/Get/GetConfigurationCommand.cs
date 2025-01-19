@@ -1,18 +1,17 @@
 using System.CommandLine;
+using System.CommandLine.NamingConventionBinder;
 using TelegramCloud.Infrastructure;
 
 namespace TelegramCloud.Commands.Configurations.Get;
 
 public class GetConfigurationCommand : Command
 {
-    private readonly DatabaseContext _dbContext = new();
-    
     public GetConfigurationCommand() : base("get", "Get Telegram configuration")
     {
-        this.SetHandler(_ =>
+        var commandHandler = CommandHandler.Create<IDatabaseContext>(databaseContext =>
         {
-            var config = _dbContext.GetTelegramBotConfig();
-        
+            var config = databaseContext.GetTelegramBotConfig();
+
             if (config is null)
             {
                 Console.WriteLine("Telegram bot configuration has not been set.");
@@ -25,5 +24,7 @@ public class GetConfigurationCommand : Command
 
             return Task.CompletedTask;
         });
+
+        Handler = commandHandler;
     }
 }

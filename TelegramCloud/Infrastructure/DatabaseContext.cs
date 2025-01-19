@@ -5,7 +5,21 @@ using TelegramCloud.Models;
 
 namespace TelegramCloud.Infrastructure;
 
-public class DatabaseContext
+public interface IDatabaseContext
+{
+    Task<Guid> InsertFile(string fileName, long fileSize, string encryptionKey, string encryptionIv);
+    Task DeleteFile(Guid fileId);
+    Task InsertFileChunk(Guid fileId, int chunkNumber, string telegramFileId, long size);
+    IEnumerable<FileDto> GetFiles();
+    IEnumerable<FileChunkDto> GetFileChunks(Guid fileId);
+    FileDto? GetFile(Guid fileId);
+    TelegramBotConfigDto? GetTelegramBotConfig();
+    TelegramBotConfigDto GetRequiredTelegramBotConfig();
+    Task SetTelegramBotTokenConfig(string token);
+    Task SetTelegramBotChatIdConfig(int chatId);
+}
+
+public class DatabaseContext : IDatabaseContext
 {
     private const string ConnectionString = "Data Source=telegramcloud.sqlite3";
 

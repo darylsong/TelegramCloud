@@ -7,8 +7,6 @@ namespace TelegramCloud.Commands.File.Delete;
 
 public class DeleteFileCommand : Command
 {
-    private readonly FilesContext _dbContext = new();
-
     public DeleteFileCommand() : base("delete", "Delete file")
     {
         AddArgument(new FileIdArgument());

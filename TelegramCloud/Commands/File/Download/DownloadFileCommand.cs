@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.CommandLine.NamingConventionBinder;
 using TelegramCloud.Commands.File.Shared;
 using TelegramCloud.Infrastructure;
 using TelegramCloud.Services;
@@ -7,70 +8,71 @@ namespace TelegramCloud.Commands.File.Download;
 
 public class DownloadFileCommand : Command
 {
-    private readonly FilesContext _dbContext = new();
-    
     public DownloadFileCommand() : base("download", "Download file")
     {
-        var fileIdArgument = new FileIdArgument();
-        AddArgument(fileIdArgument);
-        
-        var outputFileNameOption = new OutputFileNameOption();
-        AddOption(outputFileNameOption);
-        
-        this.SetHandler(async (fileIdArgumentValue, outputFileNameOptionValue) =>
-        {
-            var config = _dbContext.GetRequiredTelegramBotConfig();
-            var telegramBot = new TelegramBot(config.Token!, config.ChatId!.Value);
-            var encryptionService = new FileEncryptionService();
-            
-            var file = _dbContext.GetFile(fileIdArgumentValue);
+        AddArgument(new FileIdArgument());
 
-            if (file is null)
+        AddOption(new OutputFileNameOption());
+
+        Handler = CommandHandler
+            .Create<Guid, string?, IFileEncryptionService, ITelegramConfigurationContext, IFilesContext>(async (
+                fileId,
+                outputFileName,
+                encryptionService,
+                telegramConfigurationContext,
+                filesContext) =>
             {
-                Console.WriteLine($"File with ID {fileIdArgumentValue} not found.");
-                return;
-            }
+                var (token, chatId) = telegramConfigurationContext.GetRequiredConfiguration();
+                var telegramBot = new TelegramBot(token, chatId);
 
-            Console.WriteLine($"Downloading file {file.Name} with size {file.Size} bytes.");
+                var file = await filesContext.GetFile(fileId);
 
-            var fileChunks = _dbContext
-                .GetFileChunks(fileIdArgumentValue)
-                .OrderBy(x => x.ChunkNumber);
-
-            var outputPath = outputFileNameOptionValue is null
-                ? $"{Environment.CurrentDirectory}/{fileIdArgumentValue}"
-                : $"{Environment.CurrentDirectory}/{outputFileNameOptionValue}";
-
-            try
-            {
-                // Download all chunks into a single encrypted data array
-                var encryptedData = new MemoryStream();
-                foreach (var fileChunk in fileChunks)
+                if (file is null)
                 {
-                    using var chunkStream = new MemoryStream();
-                    await telegramBot.GetFile(fileChunk.TelegramFileId, chunkStream);
-                    var chunkData = chunkStream.ToArray();
-                    await encryptedData.WriteAsync(chunkData);
-                    
-                    Console.WriteLine($"Download progress: {(double)encryptedData.Length / file.Size * 100}%");
+                    Console.WriteLine($"File with ID {fileId} not found.");
+                    return;
                 }
 
-                var key = Convert.FromBase64String(file.EncryptionKey);
-                var iv = Convert.FromBase64String(file.EncryptionIv);
-                var decryptedData = encryptionService.Decrypt(encryptedData.ToArray(), key, iv);
+                Console.WriteLine($"Downloading file {file.Name} with size {file.Size} bytes.");
 
-                await System.IO.File.WriteAllBytesAsync(outputPath, decryptedData);
+                var fileChunks = filesContext
+                    .GetFileChunks(fileId)
+                    .OrderBy(x => x.ChunkNumber);
 
-                Console.WriteLine("Successfully downloaded file.");
-            }
-            catch (Exception e)
-            {
-                if (System.IO.File.Exists(outputPath))
+                var outputPath = outputFileName is null
+                    ? $"{Environment.CurrentDirectory}/{file.Name}"
+                    : $"{Environment.CurrentDirectory}/{outputFileName}";
+
+                try
                 {
-                    System.IO.File.Delete(outputPath);
+                    var encryptedData = new MemoryStream();
+                    await foreach (var fileChunk in fileChunks)
+                    {
+                        using var chunkStream = new MemoryStream();
+                        await telegramBot.GetFile(fileChunk.TelegramFileId, chunkStream);
+                        var chunkData = chunkStream.ToArray();
+                        await encryptedData.WriteAsync(chunkData);
+
+                        Console.WriteLine($"Download progress: {(double)encryptedData.Length / file.Size * 100}%");
+                    }
+
+                    var key = Convert.FromBase64String(file.EncryptionKey);
+                    var iv = Convert.FromBase64String(file.EncryptionIv);
+                    var decryptedData = encryptionService.Decrypt(encryptedData.ToArray(), key, iv);
+
+                    await System.IO.File.WriteAllBytesAsync(outputPath, decryptedData);
+
+                    Console.WriteLine("Successfully downloaded file.");
                 }
-                throw;
-            }
-        }, fileIdArgument, outputFileNameOption);
+                catch (Exception)
+                {
+                    if (System.IO.File.Exists(outputPath))
+                    {
+                        System.IO.File.Delete(outputPath);
+                    }
+
+                    throw;
+                }
+            });
     }
 }

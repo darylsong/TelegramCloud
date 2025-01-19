@@ -2,15 +2,20 @@ using System.Security.Cryptography;
 
 namespace TelegramCloud.Services;
 
-public class FileEncryptionService
+public interface IFileEncryptionService
 {
-    private const int KeySize = 32; // 256 bits
-    private const int IvSize = 16;  // 128 bits
+    (byte[] encryptedData, byte[] key, byte[] iv) Encrypt(byte[] data);
+    byte[] Decrypt(byte[] encryptedData, byte[] key, byte[] iv);
+}
+
+public class FileEncryptionService : IFileEncryptionService
+{
+    private const int KeySizeInBits = 256;
 
     public (byte[] encryptedData, byte[] key, byte[] iv) Encrypt(byte[] data)
     {
         using var aes = Aes.Create();
-        aes.KeySize = KeySize * 8; // Convert bytes to bits
+        aes.KeySize = KeySizeInBits;
         aes.GenerateKey();
         aes.GenerateIV();
 
@@ -27,7 +32,7 @@ public class FileEncryptionService
     public byte[] Decrypt(byte[] encryptedData, byte[] key, byte[] iv)
     {
         using var aes = Aes.Create();
-        aes.KeySize = KeySize * 8;
+        aes.KeySize = KeySizeInBits;
         aes.Key = key;
         aes.IV = iv;
 

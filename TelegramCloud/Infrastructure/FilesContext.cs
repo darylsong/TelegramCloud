@@ -1,91 +1,45 @@
 ﻿using System.Data;
 using Microsoft.Data.Sqlite;
-using TelegramCloud.Exceptions;
 using TelegramCloud.Models;
 
 namespace TelegramCloud.Infrastructure;
 
 public interface IFilesContext
 {
+    Task<FileDto?> GetFile(Guid fileId);
+    IAsyncEnumerable<FileDto> GetFiles();
+    IAsyncEnumerable<FileChunkDto> GetFileChunks(Guid fileId);
     Task<Guid> InsertFile(string fileName, long fileSize, string encryptionKey, string encryptionIv);
-    Task DeleteFile(Guid fileId);
     Task InsertFileChunk(Guid fileId, int chunkNumber, string telegramFileId, long size);
-    IEnumerable<FileDto> GetFiles();
-    IEnumerable<FileChunkDto> GetFileChunks(Guid fileId);
-    FileDto? GetFile(Guid fileId);
-    TelegramBotConfigDto? GetTelegramBotConfig();
-    TelegramBotConfigDto GetRequiredTelegramBotConfig();
-    Task SetTelegramBotTokenConfig(string token);
-    Task SetTelegramBotChatIdConfig(int chatId);
+    Task DeleteFile(Guid fileId);
 }
 
-public class FilesContext : IFilesContext
+public class FilesContext : DatabaseContext, IFilesContext
 {
-    private const string ConnectionString = "Data Source=telegramcloud.sqlite3";
-
-    public FilesContext()
+    public async Task<FileDto?> GetFile(Guid fileId)
     {
-        using var connection = new SqliteConnection(ConnectionString);
-
-        connection.Open();
-
-        InitializeDatabase(connection);
-    }
-
-    public async Task<Guid> InsertFile(string fileName, long fileSize, string encryptionKey, string encryptionIv)
-    {
-        var fileGuid = Guid.NewGuid();
-
-        await using var connection = new SqliteConnection(ConnectionString);
-
-        connection.Open();
+        await using var connection = GetDatabaseConnection();
 
         var sqlCommand = new SqliteCommand
-        ($"INSERT INTO Files (Id, Name, Size, EncryptionKey, EncryptionIv) VALUES ('{fileGuid}', '{fileName}', {fileSize}, '{encryptionKey}', '{encryptionIv}')",
+        ($"SELECT * FROM Files WHERE Id = '{fileId}'",
             connection);
 
-        await sqlCommand.ExecuteNonQueryAsync();
+        var sqlDataReader = sqlCommand.ExecuteReader();
 
-        return fileGuid;
+        return sqlDataReader.Read()
+            ? new FileDto(
+                fileId,
+                sqlDataReader.GetString("Name"),
+                sqlDataReader.GetInt64("Size"),
+                sqlDataReader.GetString("EncryptionKey"),
+                sqlDataReader.GetString("EncryptionIv"))
+            : null;
     }
 
-    public async Task DeleteFile(Guid fileId)
+    public async IAsyncEnumerable<FileDto> GetFiles()
     {
-        await using var connection = new SqliteConnection(ConnectionString);
-
-        connection.Open();
-
-        var sqlCommand = new SqliteCommand
-            ($"DELETE FROM Files WHERE Id = '{fileId}'", connection);
-
-        await sqlCommand.ExecuteNonQueryAsync();
-
-        sqlCommand = new SqliteCommand
-            ($"DELETE FROM FileChunks WHERE FileId = '{fileId}'", connection);
-
-        await sqlCommand.ExecuteNonQueryAsync();
-    }
-
-    public async Task InsertFileChunk(Guid fileId, int chunkNumber, string telegramFileId, long size)
-    {
-        var fileChunkId = Guid.NewGuid();
-
-        await using var connection = new SqliteConnection(ConnectionString);
-
-        connection.Open();
-
-        var sqlCommand = new SqliteCommand
-        ($"INSERT INTO FileChunks (Id, FileId, ChunkNumber, TelegramFileId, Size) VALUES ('{fileChunkId}', '{fileId}', {chunkNumber}, '{telegramFileId}', {size})",
-            connection);
-
-        await sqlCommand.ExecuteNonQueryAsync();
-    }
-
-    public IEnumerable<FileDto> GetFiles()
-    {
-        using var connection = new SqliteConnection(ConnectionString);
-        connection.Open();
-
+        await using var connection = GetDatabaseConnection();
+        
         var sqlCommand = new SqliteCommand
         ("SELECT * FROM Files",
             connection);
@@ -104,11 +58,9 @@ public class FilesContext : IFilesContext
         }
     }
 
-    public IEnumerable<FileChunkDto> GetFileChunks(Guid fileId)
+    public async IAsyncEnumerable<FileChunkDto> GetFileChunks(Guid fileId)
     {
-        using var connection = new SqliteConnection(ConnectionString);
-
-        connection.Open();
+        await using var connection = GetDatabaseConnection();
 
         var sqlCommand = new SqliteCommand
         ($"SELECT fc.TelegramFileId, fc.ChunkNumber FROM FileChunks fc JOIN Files f ON fc.FileId = f.Id WHERE f.Id = '{fileId}'",
@@ -124,116 +76,53 @@ public class FilesContext : IFilesContext
         }
     }
 
-    public FileDto? GetFile(Guid fileId)
+    public async Task<Guid> InsertFile(string fileName, long fileSize, string encryptionKey, string encryptionIv)
     {
-        using var connection = new SqliteConnection(ConnectionString);
+        var fileGuid = Guid.NewGuid();
 
-        connection.Open();
+        await using var connection = GetDatabaseConnection();
 
         var sqlCommand = new SqliteCommand
-        ($"SELECT * FROM Files WHERE Id = '{fileId}'",
+        ($"INSERT INTO Files (Id, Name, Size, EncryptionKey, EncryptionIv) VALUES ('{fileGuid}', '{fileName}', {fileSize}, '{encryptionKey}', '{encryptionIv}')",
             connection);
 
-        var sqlDataReader = sqlCommand.ExecuteReader();
+        await sqlCommand.ExecuteNonQueryAsync();
 
-        return sqlDataReader.Read()
-            ? new FileDto(
-                fileId,
-                sqlDataReader.GetString("Name"),
-                sqlDataReader.GetInt64("Size"),
-                sqlDataReader.GetString("EncryptionKey"),
-                sqlDataReader.GetString("EncryptionIv"))
-            : null;
+        return fileGuid;
     }
 
-    public TelegramBotConfigDto? GetTelegramBotConfig()
+    public async Task InsertFileChunk(Guid fileId, int chunkNumber, string telegramFileId, long size)
     {
-        using var connection = new SqliteConnection(ConnectionString);
-        connection.Open();
+        var fileChunkId = Guid.NewGuid();
 
-        var sqlCommand = new SqliteCommand("SELECT * FROM TelegramBotConfig", connection);
-
-        var sqlDataReader = sqlCommand.ExecuteReader();
-
-        return sqlDataReader.Read()
-            ? new TelegramBotConfigDto(
-                sqlDataReader.IsDBNull("Token") ? null : sqlDataReader.GetString("Token"),
-                sqlDataReader.IsDBNull("ChatId") ? null : sqlDataReader.GetInt32("ChatId"))
-            : null;
-    }
-
-    public TelegramBotConfigDto GetRequiredTelegramBotConfig()
-    {
-        var telegramBotConfig = GetTelegramBotConfig();
-
-        if (telegramBotConfig is null)
-        {
-            throw new ConfigurationException("Telegram bot configuration is not set.");
-        }
-
-        if (telegramBotConfig.Token is null)
-        {
-            throw new ConfigurationException("Telegram bot token configuration is not set.");
-        }
-
-        if (telegramBotConfig.ChatId is null)
-        {
-            throw new ConfigurationException("Telegram bot chat ID configuration is not set.");
-        }
-
-        return telegramBotConfig;
-    }
-
-    public async Task SetTelegramBotTokenConfig(string token)
-    {
-        await using var connection = new SqliteConnection(ConnectionString);
-        connection.Open();
-
+        await using var connection = GetDatabaseConnection();
+        
         var sqlCommand = new SqliteCommand
-        ($"""
-          UPDATE TelegramBotConfig
-          SET Token = '{token}';
-
-          INSERT INTO TelegramBotConfig (Token)
-          SELECT '{token}'
-          WHERE (SELECT Changes() = 0);
-          """, connection);
+        ($"INSERT INTO FileChunks (Id, FileId, ChunkNumber, TelegramFileId, Size) VALUES ('{fileChunkId}', '{fileId}', {chunkNumber}, '{telegramFileId}', {size})",
+            connection);
 
         await sqlCommand.ExecuteNonQueryAsync();
     }
 
-    public async Task SetTelegramBotChatIdConfig(int chatId)
+    public async Task DeleteFile(Guid fileId)
     {
-        await using var connection = new SqliteConnection(ConnectionString);
-        connection.Open();
+        await using var connection = GetDatabaseConnection();
 
         var sqlCommand = new SqliteCommand
-        ($"""
-          UPDATE TelegramBotConfig
-          SET ChatId = {chatId};
+            ($"DELETE FROM Files WHERE Id = '{fileId}'", connection);
 
-          INSERT INTO TelegramBotConfig (Token)
-          SELECT {chatId}
-          WHERE (SELECT Changes() = 0);
-          """, connection);
+        await sqlCommand.ExecuteNonQueryAsync();
+
+        sqlCommand = new SqliteCommand
+            ($"DELETE FROM FileChunks WHERE FileId = '{fileId}'", connection);
 
         await sqlCommand.ExecuteNonQueryAsync();
     }
 
-    private static void InitializeDatabase(SqliteConnection connection)
+    protected override void InitializeDatabase(SqliteConnection connection)
     {
-        CreateTelegramBotConfigTable(connection);
         CreateFilesTable(connection);
         CreateFileChunksTable(connection);
-    }
-
-    private static void CreateTelegramBotConfigTable(SqliteConnection connection)
-    {
-        var sqlCommand = new SqliteCommand
-        ("CREATE TABLE IF NOT EXISTS TelegramBotConfig(Token VARCHAR(50) NULL, ChatId INTEGER NULL)",
-            connection);
-
-        sqlCommand.ExecuteNonQuery();
     }
 
     private static void CreateFilesTable(SqliteConnection connection)

@@ -1,17 +1,16 @@
 using System.CommandLine;
+using System.CommandLine.NamingConventionBinder;
 using TelegramCloud.Infrastructure;
 
 namespace TelegramCloud.Commands.File.List;
 
 public class ListFilesCommand : Command
 {
-    private readonly FilesContext _dbContext = new();
-
     public ListFilesCommand() : base("list", "List all uploaded files")
     {
-        this.SetHandler(_ =>
+        Handler = CommandHandler.Create<IFilesContext>(async filesContext =>
         {
-            var files = _dbContext.GetFiles().ToList();
+            var files = await filesContext.GetFiles().ToListAsync();
 
             if (files.Count == 0)
             {

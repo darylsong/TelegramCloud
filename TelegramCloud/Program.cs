@@ -14,7 +14,8 @@ rootCommand.AddCommand(new FileCommand());
 var builder = new CommandLineBuilder(rootCommand)
     .UseDependencyInjection(services => 
     {
-        services.AddTransient<IDatabaseContext, DatabaseContext>();
+        services.AddTransient<ITelegramConfigurationContext, TelegramConfigurationContext>();
+        services.AddTransient<IFilesContext, FilesContext>();
     })
     .UseExceptionHandler((exception, _) =>
     {

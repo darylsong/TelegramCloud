@@ -8,9 +8,9 @@ public class GetConfigurationCommand : Command
 {
     public GetConfigurationCommand() : base("get", "Get Telegram configuration")
     {
-        Handler = CommandHandler.Create<IDatabaseContext>(databaseContext =>
+        Handler = CommandHandler.Create<ITelegramConfigurationContext>(telegramConfigurationContext =>
         {
-            var config = databaseContext.GetTelegramBotConfig();
+            var config = telegramConfigurationContext.GetConfiguration();
 
             if (config is null)
             {

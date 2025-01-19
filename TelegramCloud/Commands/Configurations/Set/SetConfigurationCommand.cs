@@ -11,17 +11,17 @@ public class SetConfigurationCommand : Command
         AddOption(new TokenOption());
         AddOption(new ChatIdOption());
         
-        Handler = CommandHandler.Create<string?, int?, IDatabaseContext>(async (token, chatId, databaseContext) =>
+        Handler = CommandHandler.Create<string?, int?, ITelegramConfigurationContext>(async (token, chatId, telegramConfigurationContext) =>
         {
             if (token is not null)
             {
-                await databaseContext.SetTelegramBotTokenConfig(token);
+                await telegramConfigurationContext.SetTelegramBotTokenConfig(token);
                 Console.WriteLine("Successfully set Telegram bot API access token");
             }
 
             if (chatId is not null)
             {
-                await databaseContext.SetTelegramBotChatIdConfig(chatId.Value);
+                await telegramConfigurationContext.SetTelegramBotChatIdConfig(chatId.Value);
                 Console.WriteLine("Successfully set Telegram chat ID");
             }
         });

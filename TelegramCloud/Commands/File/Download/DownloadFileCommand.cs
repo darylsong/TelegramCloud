@@ -7,7 +7,7 @@ namespace TelegramCloud.Commands.File.Download;
 
 public class DownloadFileCommand : Command
 {
-    private readonly DatabaseContext _dbContext = new();
+    private readonly FilesContext _dbContext = new();
     
     public DownloadFileCommand() : base("download", "Download file")
     {

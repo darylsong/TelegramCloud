@@ -7,7 +7,7 @@ namespace TelegramCloud.Commands.File.Upload;
 
 public class UploadFileCommand : Command
 {
-    private readonly DatabaseContext _dbContext = new();
+    private readonly FilesContext _dbContext = new();
     private const int ChunkSize = 20 * 1024 * 1024;
     
     public UploadFileCommand() : base("upload", "Upload file")

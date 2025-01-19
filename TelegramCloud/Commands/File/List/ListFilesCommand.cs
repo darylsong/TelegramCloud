@@ -5,7 +5,7 @@ namespace TelegramCloud.Commands.File.List;
 
 public class ListFilesCommand : Command
 {
-    private readonly DatabaseContext _dbContext = new();
+    private readonly FilesContext _dbContext = new();
 
     public ListFilesCommand() : base("list", "List all uploaded files")
     {

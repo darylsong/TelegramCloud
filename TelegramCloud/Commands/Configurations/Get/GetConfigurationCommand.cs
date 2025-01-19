@@ -8,7 +8,7 @@ public class GetConfigurationCommand : Command
 {
     public GetConfigurationCommand() : base("get", "Get Telegram configuration")
     {
-        var commandHandler = CommandHandler.Create<IDatabaseContext>(databaseContext =>
+        Handler = CommandHandler.Create<IDatabaseContext>(databaseContext =>
         {
             var config = databaseContext.GetTelegramBotConfig();
 
@@ -24,7 +24,5 @@ public class GetConfigurationCommand : Command
 
             return Task.CompletedTask;
         });
-
-        Handler = commandHandler;
     }
 }

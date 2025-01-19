@@ -1,33 +1,29 @@
 using System.CommandLine;
+using System.CommandLine.NamingConventionBinder;
 using TelegramCloud.Infrastructure;
 
 namespace TelegramCloud.Commands.Configurations.Set;
 
 public class SetConfigurationCommand : Command
 {
-    private readonly DatabaseContext _dbContext = new();
-
     public SetConfigurationCommand() : base("set", "Set Telegram configuration")
     {
-        var tokenOption = new TokenOption();
-        AddOption(tokenOption);
-
-        var chatIdOption = new ChatIdOption();
-        AddOption(chatIdOption);
-
-        this.SetHandler(async (tokenOptionValue, chatIdOptionValue) =>
+        AddOption(new TokenOption());
+        AddOption(new ChatIdOption());
+        
+        Handler = CommandHandler.Create<string?, int?, IDatabaseContext>(async (token, chatId, databaseContext) =>
         {
-            if (tokenOptionValue is not null)
+            if (token is not null)
             {
-                await _dbContext.SetTelegramBotTokenConfig(tokenOptionValue);
+                await databaseContext.SetTelegramBotTokenConfig(token);
                 Console.WriteLine("Successfully set Telegram bot API access token");
             }
 
-            if (chatIdOptionValue is not null)
+            if (chatId is not null)
             {
-                await _dbContext.SetTelegramBotChatIdConfig(chatIdOptionValue.Value);
+                await databaseContext.SetTelegramBotChatIdConfig(chatId.Value);
                 Console.WriteLine("Successfully set Telegram chat ID");
             }
-        }, tokenOption, chatIdOption);
+        });
     }
 }

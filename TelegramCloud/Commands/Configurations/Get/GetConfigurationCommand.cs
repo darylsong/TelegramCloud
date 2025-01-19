@@ -10,17 +10,10 @@ public class GetConfigurationCommand : Command
     {
         Handler = CommandHandler.Create<ITelegramConfigurationContext>(telegramConfigurationContext =>
         {
-            var config = telegramConfigurationContext.GetConfiguration();
+            var (token, chatId) = telegramConfigurationContext.GetConfiguration();
 
-            if (config is null)
-            {
-                Console.WriteLine("Telegram bot configuration has not been set.");
-            }
-            else
-            {
-                Console.WriteLine("API token: " + (config.Token ?? "Not set"));
-                Console.WriteLine("Chat ID: " + (config.ChatId?.ToString() ?? "Not set"));
-            }
+            Console.WriteLine("API token: " + (token ?? "Not set"));
+            Console.WriteLine("Chat ID: " + (chatId?.ToString() ?? "Not set"));
         });
     }
 }

@@ -7,15 +7,15 @@ namespace TelegramCloud.Infrastructure;
 
 public interface ITelegramConfigurationContext
 {
-    TelegramBotConfigDto? GetConfiguration();
-    TelegramBotConfigDto GetRequiredTelegramBotConfig();
-    Task SetTelegramBotTokenConfig(string token);
-    Task SetTelegramBotChatIdConfig(int chatId);
+    (string? Token, int? ChatId) GetConfiguration();
+    (string Token, int ChatId) GetRequiredConfiguration();
+    Task SetBotToken(string token);
+    Task SetChatId(int chatId);
 }
 
 public class TelegramConfigurationContext : DatabaseContext, ITelegramConfigurationContext
 {
-    public TelegramBotConfigDto? GetConfiguration()
+    public (string? Token, int? ChatId) GetConfiguration()
     {
         using var dbConnection = GetDatabaseConnection();
 
@@ -24,35 +24,31 @@ public class TelegramConfigurationContext : DatabaseContext, ITelegramConfigurat
         var sqlDataReader = sqlCommand.ExecuteReader();
 
         return sqlDataReader.Read()
-            ? new TelegramBotConfigDto(
+            ? (
                 sqlDataReader.IsDBNull("Token") ? null : sqlDataReader.GetString("Token"),
-                sqlDataReader.IsDBNull("ChatId") ? null : sqlDataReader.GetInt32("ChatId"))
-            : null;
+                sqlDataReader.IsDBNull("ChatId") ? null : sqlDataReader.GetInt32("ChatId")
+            )
+            : default;
     }
 
-    public TelegramBotConfigDto GetRequiredTelegramBotConfig()
+    public (string Token, int ChatId) GetRequiredConfiguration()
     {
-        var telegramBotConfig = GetConfiguration();
+        var configuration = GetConfiguration();
 
-        if (telegramBotConfig is null)
-        {
-            throw new ConfigurationException("Telegram bot configuration is not set.");
-        }
-
-        if (telegramBotConfig.Token is null)
+        if (configuration.Token is null)
         {
             throw new ConfigurationException("Telegram bot token configuration is not set.");
         }
 
-        if (telegramBotConfig.ChatId is null)
+        if (configuration.ChatId is null)
         {
             throw new ConfigurationException("Telegram bot chat ID configuration is not set.");
         }
 
-        return telegramBotConfig;
+        return (configuration.Token, configuration.ChatId.Value);
     }
 
-    public async Task SetTelegramBotTokenConfig(string token)
+    public async Task SetBotToken(string token)
     {
         await using var dbConnection = GetDatabaseConnection();
 
@@ -69,7 +65,7 @@ public class TelegramConfigurationContext : DatabaseContext, ITelegramConfigurat
         await sqlCommand.ExecuteNonQueryAsync();
     }
 
-    public async Task SetTelegramBotChatIdConfig(int chatId)
+    public async Task SetChatId(int chatId)
     {
         await using var dbConnection = GetDatabaseConnection();
 
@@ -87,11 +83,6 @@ public class TelegramConfigurationContext : DatabaseContext, ITelegramConfigurat
     }
 
     protected override void InitializeDatabase(SqliteConnection connection)
-    {
-        CreateTelegramBotConfigTable(connection);
-    }
-
-    private static void CreateTelegramBotConfigTable(SqliteConnection connection)
     {
         var sqlCommand = new SqliteCommand
         ("CREATE TABLE IF NOT EXISTS TelegramBotConfig(Token VARCHAR(50) NULL, ChatId INTEGER NULL)",

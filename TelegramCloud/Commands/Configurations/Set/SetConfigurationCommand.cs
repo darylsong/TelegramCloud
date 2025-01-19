@@ -15,13 +15,13 @@ public class SetConfigurationCommand : Command
         {
             if (token is not null)
             {
-                await telegramConfigurationContext.SetTelegramBotTokenConfig(token);
+                await telegramConfigurationContext.SetBotToken(token);
                 Console.WriteLine("Successfully set Telegram bot API access token");
             }
 
             if (chatId is not null)
             {
-                await telegramConfigurationContext.SetTelegramBotChatIdConfig(chatId.Value);
+                await telegramConfigurationContext.SetChatId(chatId.Value);
                 Console.WriteLine("Successfully set Telegram chat ID");
             }
         });

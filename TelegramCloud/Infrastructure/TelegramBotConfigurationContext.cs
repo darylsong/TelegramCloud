@@ -13,7 +13,7 @@ public interface ITelegramConfigurationContext
     Task SetChatId(int chatId);
 }
 
-public class TelegramConfigurationContext : DatabaseContext, ITelegramConfigurationContext
+public class TelegramBotConfigurationContext : DatabaseContext, ITelegramConfigurationContext
 {
     public (string? Token, int? ChatId) GetConfiguration()
     {

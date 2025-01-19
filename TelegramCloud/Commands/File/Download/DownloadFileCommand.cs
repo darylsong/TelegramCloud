@@ -15,16 +15,13 @@ public class DownloadFileCommand : Command
         AddOption(new OutputFileNameOption());
 
         Handler = CommandHandler
-            .Create<Guid, string?, IFileEncryptionService, ITelegramConfigurationContext, IFilesContext>(async (
+            .Create<Guid, string?, IFileEncryptionService, ITelegramBot, IFilesContext>(async (
                 fileId,
                 outputFileName,
                 encryptionService,
-                telegramConfigurationContext,
+                telegramBot,
                 filesContext) =>
             {
-                var (token, chatId) = telegramConfigurationContext.GetRequiredConfiguration();
-                var telegramBot = new TelegramBot(token, chatId);
-
                 var file = await filesContext.GetFile(fileId);
 
                 if (file is null)
@@ -38,6 +35,8 @@ public class DownloadFileCommand : Command
                 var fileChunks = filesContext
                     .GetFileChunks(fileId)
                     .OrderBy(x => x.ChunkNumber);
+                
+                Console.WriteLine($"{outputFileName}");
 
                 var outputPath = outputFileName is null
                     ? $"{Environment.CurrentDirectory}/{file.Name}"

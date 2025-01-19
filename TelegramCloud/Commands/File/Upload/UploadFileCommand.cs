@@ -15,15 +15,12 @@ public class UploadFileCommand : Command
         AddArgument(new FilePathArgument());
         
         Handler = CommandHandler
-            .Create<string, IFileEncryptionService, ITelegramConfigurationContext, IFilesContext>(async (
+            .Create<string, IFileEncryptionService, ITelegramBot, IFilesContext>(async (
                 filePath,
                 encryptionService,
-                telegramConfigurationContext,
+                telegramBot,
                 filesContext) =>
             {
-                var (token, chatId) = telegramConfigurationContext.GetRequiredConfiguration();
-                var telegramBot = new TelegramBot(token, chatId);
-
                 var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
                 var (encryptedData, encryptionKey, encryptionIv) = encryptionService.Encrypt(fileBytes);
 

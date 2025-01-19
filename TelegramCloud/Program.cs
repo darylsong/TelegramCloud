@@ -15,8 +15,9 @@ rootCommand.AddCommand(new FileCommand());
 var builder = new CommandLineBuilder(rootCommand)
     .UseDependencyInjection(services => 
     {
+        services.AddTransient<ITelegramBot, TelegramBot>();
         services.AddTransient<IFileEncryptionService, FileEncryptionService>();
-        services.AddTransient<ITelegramConfigurationContext, TelegramConfigurationContext>();
+        services.AddTransient<ITelegramConfigurationContext, TelegramBotConfigurationContext>();
         services.AddTransient<IFilesContext, FilesContext>();
     })
     .UseExceptionHandler((exception, _) =>

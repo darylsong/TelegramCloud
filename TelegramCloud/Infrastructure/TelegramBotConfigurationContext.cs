@@ -1,7 +1,6 @@
 ﻿using System.Data;
 using Microsoft.Data.Sqlite;
 using TelegramCloud.Exceptions;
-using TelegramCloud.Models;
 
 namespace TelegramCloud.Infrastructure;
 

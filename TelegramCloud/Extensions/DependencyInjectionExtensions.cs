@@ -2,10 +2,9 @@
 using System.CommandLine.Invocation;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace TelegramCloud;
+namespace TelegramCloud.Extensions;
 
-// This was modified from https://anthonysimmon.com/true-dependency-injection-with-system-commandline/
-public static class DependencyInjectionMiddleware
+public static class DependencyInjectionExtensions
 {
     public static CommandLineBuilder UseDependencyInjection(this CommandLineBuilder builder, Action<ServiceCollection> configureServices)
     {

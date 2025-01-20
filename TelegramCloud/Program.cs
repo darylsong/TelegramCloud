@@ -2,9 +2,9 @@
 using System.CommandLine.Builder;
 using System.CommandLine.Parsing;
 using Microsoft.Extensions.DependencyInjection;
-using TelegramCloud;
 using TelegramCloud.Commands.Configurations;
 using TelegramCloud.Commands.File;
+using TelegramCloud.Extensions;
 using TelegramCloud.Infrastructure;
 using TelegramCloud.Services;
 

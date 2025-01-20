@@ -32,7 +32,7 @@ public class UploadFileCommand : Command
 
                 try
                 {
-                    for (int offset = 0; offset < encryptedData.Length; offset += ChunkSize)
+                    for (var offset = 0; offset < encryptedData.Length; offset += ChunkSize)
                     {
                         var chunkSize = Math.Min(ChunkSize, encryptedData.Length - offset);
                         var chunk = new byte[chunkSize];

@@ -6,12 +6,19 @@ namespace TelegramCloud.Extensions;
 
 public static class DependencyInjectionExtensions
 {
-    public static CommandLineBuilder UseDependencyInjection(this CommandLineBuilder builder, Action<ServiceCollection> configureServices)
+    public static CommandLineBuilder UseDependencyInjection(
+        this CommandLineBuilder builder,
+        Action<ServiceCollection> configureServices)
     {
-        return UseDependencyInjection(builder, (_, services) => configureServices(services));
+        return UseDependencyInjection(
+            builder,
+            (_, services) => configureServices(services));
     }
 
-    private static CommandLineBuilder UseDependencyInjection(this CommandLineBuilder builder, Action<InvocationContext, ServiceCollection> configureServices)
+    private static CommandLineBuilder UseDependencyInjection(
+        this CommandLineBuilder builder,
+        Action<InvocationContext,
+            ServiceCollection> configureServices)
     {
         return builder.AddMiddleware(async (context, next) =>
         {
@@ -23,9 +30,13 @@ public static class DependencyInjectionExtensions
 
             foreach (var serviceType in uniqueServiceTypes)
             {
-                context.BindingContext.AddService(serviceType, _ => serviceProvider.GetRequiredService(serviceType));
+                context.BindingContext.AddService(
+                    serviceType,
+                    _ => serviceProvider.GetRequiredService(serviceType));
                 var enumerableServiceType = typeof(IEnumerable<>).MakeGenericType(serviceType);
-                context.BindingContext.AddService(enumerableServiceType, _ => serviceProvider.GetServices(serviceType));
+                context.BindingContext.AddService(
+                    enumerableServiceType,
+                    _ => serviceProvider.GetServices(serviceType));
             }
 
             await next(context);

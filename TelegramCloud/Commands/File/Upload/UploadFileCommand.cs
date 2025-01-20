@@ -13,7 +13,7 @@ public class UploadFileCommand : Command
     public UploadFileCommand() : base("upload", "Upload file")
     {
         AddArgument(new FilePathArgument());
-        
+
         Handler = CommandHandler
             .Create<string, IFileEncryptionService, ITelegramBot, IFilesContext>(async (
                 filePath,
@@ -22,8 +22,8 @@ public class UploadFileCommand : Command
                 filesContext) =>
             {
                 var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
-                var (encryptedData, encryptionKey, encryptionIv) = encryptionService.Encrypt(fileBytes);
-
+                var (encryptedData, encryptionKey, encryptionIv) =
+                    encryptionService.Encrypt(fileBytes);
                 var totalFileSize = fileBytes.Length;
                 var totalUploadedSize = 0L;
                 var uploadedFileChunks = new List<UploadedFileChunk>();
@@ -36,7 +36,12 @@ public class UploadFileCommand : Command
                     {
                         var chunkSize = Math.Min(ChunkSize, encryptedData.Length - offset);
                         var chunk = new byte[chunkSize];
-                        Array.Copy(encryptedData, offset, chunk, 0, chunkSize);
+                        Array.Copy(
+                            encryptedData,
+                            offset,
+                            chunk,
+                            0,
+                            chunkSize);
 
                         var chunkNumber = (offset / ChunkSize) + 1;
                         using var chunkStream = new MemoryStream(chunk);

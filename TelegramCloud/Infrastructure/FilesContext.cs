@@ -40,7 +40,7 @@ public class FilesContext : DatabaseContext, IFilesContext
     public async IAsyncEnumerable<File> GetFiles()
     {
         await using var connection = GetDatabaseConnection();
-        
+
         var sqlCommand = new SqliteCommand
         ("SELECT * FROM Files",
             connection);
@@ -64,7 +64,11 @@ public class FilesContext : DatabaseContext, IFilesContext
         await using var connection = GetDatabaseConnection();
 
         var sqlCommand = new SqliteCommand
-        ($"SELECT fc.TelegramFileId, fc.ChunkNumber FROM FileChunks fc JOIN Files f ON fc.FileId = f.Id WHERE f.Id = '{fileId}'",
+        ($"""
+          SELECT fc.TelegramFileId, fc.ChunkNumber FROM FileChunks fc
+          JOIN Files f ON fc.FileId = f.Id
+          WHERE f.Id = '{fileId}'
+          """,
             connection);
 
         var sqlDataReader = sqlCommand.ExecuteReader();
@@ -84,8 +88,10 @@ public class FilesContext : DatabaseContext, IFilesContext
         await using var connection = GetDatabaseConnection();
 
         var sqlCommand = new SqliteCommand
-        ($"INSERT INTO Files (Id, Name, Size, EncryptionKey, EncryptionIv) VALUES ('{fileGuid}', '{fileName}', {fileSize}, '{encryptionKey}', '{encryptionIv}')",
-            connection);
+        ($"""
+          INSERT INTO Files (Id, Name, Size, EncryptionKey, EncryptionIv)
+          VALUES ('{fileGuid}', '{fileName}', {fileSize}, '{encryptionKey}', '{encryptionIv}')
+          """, connection);
 
         await sqlCommand.ExecuteNonQueryAsync();
 
@@ -97,10 +103,12 @@ public class FilesContext : DatabaseContext, IFilesContext
         var fileChunkId = Guid.NewGuid();
 
         await using var connection = GetDatabaseConnection();
-        
+
         var sqlCommand = new SqliteCommand
-        ($"INSERT INTO FileChunks (Id, FileId, ChunkNumber, TelegramFileId, Size) VALUES ('{fileChunkId}', '{fileId}', {chunkNumber}, '{telegramFileId}', {size})",
-            connection);
+        ($"""
+          INSERT INTO FileChunks (Id, FileId, ChunkNumber, TelegramFileId, Size)
+          VALUES ('{fileChunkId}', '{fileId}', {chunkNumber}, '{telegramFileId}', {size})
+          """, connection);
 
         await sqlCommand.ExecuteNonQueryAsync();
     }
@@ -129,8 +137,14 @@ public class FilesContext : DatabaseContext, IFilesContext
     private static void CreateFilesTable(SqliteConnection connection)
     {
         var sqlCommand = new SqliteCommand
-        ("CREATE TABLE IF NOT EXISTS Files(Id VARCHAR(36), Name NVARCHAR(256), Size INTEGER, EncryptionKey VARCHAR(50), EncryptionIv VARCHAR(30))",
-            connection);
+        ("""
+         CREATE TABLE IF NOT EXISTS Files(
+             Id VARCHAR(36),
+             Name NVARCHAR(256)
+             Size INTEGER,
+             EncryptionKey VARCHAR(50),
+             EncryptionIv VARCHAR(30))
+         """, connection);
 
         sqlCommand.ExecuteNonQuery();
     }
@@ -138,8 +152,14 @@ public class FilesContext : DatabaseContext, IFilesContext
     private static void CreateFileChunksTable(SqliteConnection connection)
     {
         var sqlCommand = new SqliteCommand
-        ("CREATE TABLE IF NOT EXISTS FileChunks(Id VARCHAR(36), FileId VARCHAR(36), ChunkNumber INTEGER, TelegramFileId VARCHAR(100), Size INTEGER)",
-            connection);
+        ("""
+         CREATE TABLE IF NOT EXISTS FileChunks(
+             Id VARCHAR(36),
+             FileId VARCHAR(36),
+             ChunkNumber INTEGER,
+             TelegramFileId VARCHAR(100),
+             Size INTEGER)
+         """, connection);
 
         sqlCommand.ExecuteNonQuery();
     }

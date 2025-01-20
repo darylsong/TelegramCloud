@@ -1,6 +1,3 @@
 namespace TelegramCloud.Exceptions;
 
-public class ConfigurationException(string errorMessage) : Exception
-{
-    public string ErrorMessage = errorMessage;
-}
+public class ConfigurationException(string message) : Exception(message);
